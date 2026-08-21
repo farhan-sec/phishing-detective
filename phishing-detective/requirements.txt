@@ -1,0 +1,6 @@
+# No third-party dependencies.
+# Phishing Detective is built entirely with the Python standard library
+# (tkinter for the GUI, json for saving your high score).
+#
+# This file is here mostly so the project looks/behaves like a normal
+# Python repo, and in case future features need something extra.

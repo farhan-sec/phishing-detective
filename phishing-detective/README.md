@@ -42,7 +42,12 @@ it later.
 
 ## Screenshots
 
-*(Coming soon — for now, just run it, it only takes a second.)*
+<img width="1024" height="703" alt="image" src="https://github.com/user-attachments/assets/4339b6a4-a4c0-4718-a19d-ca459c377dd9" />
+
+<img width="701" height="180" alt="image" src="https://github.com/user-attachments/assets/ea844b1b-6a81-4df2-adf6-56e03b0bbc75" />
+
+<img width="726" height="121" alt="image" src="https://github.com/user-attachments/assets/d2915b54-2824-465a-842f-60848de29bea" />
+
 
 ## Getting started
 

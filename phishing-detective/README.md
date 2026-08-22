@@ -56,7 +56,7 @@ standard Python installer on Windows/macOS; on some Linux distros you may
 need to install it separately, see below).
 
 ```bash
-git clone https://github.com/your-username/phishing-detective.git
+git clone https://github.com/farhan-sec/phishing-detective.git
 cd phishing-detective
 python main.py
 ```

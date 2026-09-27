@@ -1,192 +1,73 @@
-# 🎮 Phishing Detective
+# 🎣 Phishing Detective
 
-> An interactive game that teaches you to spot phishing attacks before they catch you.
+A tkinter desktop game that teaches phishing-link recognition. You're shown a URL — decide if it's a real brand link or a phishing attempt, then read why. No internet connection or third-party libraries required.
 
-## What Problem Does This Solve?
+## ✨ Features
 
-Phishing attacks exploit human psychology, not just technical vulnerabilities. Most people *think* they can spot a fake email, but when tested, they fail.
+- **Procedurally generated links** — 9 real-world phishing techniques (homoglyphs, subdomain tricks, suspicious TLDs, hyphen stuffing, raw IPs, URL shorteners, and more), so the game never runs out of new rounds
+- **Difficulty levels** (new) — Beginner / Intermediate / Advanced, chosen at startup. Higher difficulty trims the post-round explanation down to a one-line hint instead of a full breakdown
+- **Phishing tricks reference panel** (new) — a scrollable in-game reference of real-world phishing patterns (lookalike domains, subdomain tricks, QR-code scams, spoofed senders), accessible any time from the header
+- **Detective rank at game over** (new) — your accuracy this run is compared against your chosen difficulty's target accuracy
+- Score, streak, lives, and a persisted local high score
+- Keyboard shortcuts (← Phishing / → Legit / Enter to continue)
+- Zero third-party dependencies — pure standard library (`tkinter`, `json`)
+- Unit-tested link generator (`tests/test_link_generator.py`)
 
-Why? Because real phishing is sophisticated. It uses domain lookalikes, spoofed senders, urgent language, and psychological manipulation.
+## 🐛 Fixed in this update
 
-**Phishing Detective teaches you what to actually look for** by giving you hundreds of examples and immediate feedback. You learn patterns. You get faster. You get better.
+- **`phishing_patterns.py` was dead code** — a whole module of real-world phishing pattern data (lookalike domains, subdomain tricks, QR-code tricks, spoofed senders) plus a `DIFFICULTY_LEVELS` config existed at the repo root but was never imported by anything. It's now `game/reference_data.py`, wired into the difficulty picker and a new in-game reference panel.
+- **`__pycache__/` was committed to the repo** — compiled `.pyc` files had been checked in under `game/__pycache__/`. Removed, and `.gitignore` now excludes them going forward.
+- **Duplicate nested folder structure** — the repository had a `phishing-detective/` subfolder duplicating the whole project alongside root-level files. Flattened to a single, normal layout.
 
----
-
-## Features
-
-✨ **Realistic Phishing Examples**
-- Lookalike domains (microsoft.com vs microsft.com)
-- Subdomain tricks (support-paypal.attacker.com)
-- IP-based links (http://3232235777)
-- Shortener obfuscation (tinyurl, bit.ly attacks)
-- Spoofed sender addresses
-
-✨ **Immediate Feedback**
-- Every guess gets explained
-- Learn *why* something is phishing
-- Understand attacker psychology
-- See what you should have noticed
-
-✨ **Infinite Practice**
-- Procedurally generated attacks
-- Never runs out of new examples
-- Difficulty increases as you learn
-
-✨ **No Dependencies**
-- Pure Python + Tkinter
-- Runs on Windows, Mac, Linux
-- ~500 lines of clean code
-
----
-
-## Getting Started
-
-### Installation
+## 📦 Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/farhan-sec/phishing-detective.git
 cd phishing-detective
-
-# Run it (that's it—no pip install needed)
-python phishing_detective.py
+python main.py
 ```
 
-### How to Play
+That's it — no `pip install` needed (see `requirements.txt`).
 
-1. **You see a URL or email address**
-2. **You guess: Real or Phishing?**
-3. **Get instant feedback**
-4. **Learn what you missed**
-5. **Play again with new examples**
+## 🎮 How to play
 
----
+1. Pick a difficulty when the game starts.
+2. You'll see a link claiming to belong to a well-known brand.
+3. Guess **Phishing** or **Legit** (buttons, or ← / → arrow keys).
+4. Read the explanation — click **Phishing tricks reference** any time for a broader cheat-sheet.
+5. Wrong guesses cost a life; correct guesses build your score and streak.
+6. Game over shows your accuracy against your difficulty's target.
 
-## Example Usage
+## 🧪 Running tests
 
-```
-=== Phishing Detective ===
-
-Is this real or phishing?
-URL: https://www.paypa1.com/login
-
-Your guess: Phishing
-
-✓ CORRECT! This is phishing.
-
-WHY: Look closely at the domain: "paypa1" not "paypal"
-The attacker used a lookalike domain (1 instead of l).
-Real phishing uses these tricks because they're hard to spot at a glance.
-
-Next round...
+```bash
+python -m unittest discover tests
 ```
 
----
-
-## How It Works (Architecture)
+## 🗂️ Project structure
 
 ```
-1. URL/Email Generator
-   ↓
-   Generates realistic fake + real examples
-   
-2. Presentation Layer
-   ↓
-   Shows user one example at a time
-   
-3. Evaluation
-   ↓
-   User makes guess (Real or Phishing)
-   
-4. Feedback Engine
-   ↓
-   Explains what makes it phishing (or why it's real)
-   
-5. Stats Tracking
-   ↓
-   Records accuracy, streak, learning progress
+phishing-detective/
+├── main.py                     # Entry point
+├── game/
+│   ├── __init__.py
+│   ├── constants.py             # Colors, fonts, layout constants
+│   ├── link_generator.py        # Procedural phishing/legit URL generator
+│   ├── reference_data.py        # Phishing tricks + difficulty config (new)
+│   └── gui.py                   # All tkinter UI + game logic
+├── tests/
+│   └── test_link_generator.py
+├── requirements.txt
+├── LICENSE
+└── README.md
 ```
 
----
+## 🧭 Roadmap
 
-## What I Learned Building This
+- [ ] More phishing techniques (punycode/IDN homograph attacks, mismatched display text vs href)
+- [ ] Optional timed mode
+- [ ] Export a personal "weak spots" summary based on which techniques you miss most
 
-**About Phishing:**
-- Attackers don't need perfect imitation, just good-enough confusion
-- Psychology matters as much as technical tricks
-- Domain registration is surprisingly easy for attackers
+## 📄 License
 
-**About Security Education:**
-- People learn by *doing*, not reading
-- Immediate feedback is critical
-- Making it a game doesn't cheapen the learning
-- Explaining the *why* is more valuable than just right/wrong
-
-**About Python & Tkinter:**
-- Tkinter is perfect for quick interactive tools
-- Simple UI can be more effective than complex ones
-- Procedural generation opens up infinite content
-
----
-
-## Future Improvements
-
-🚀 **Coming Soon:**
-- Browser extension version (scan emails in Gmail/Outlook)
-- Difficulty levels (beginner to advanced)
-- Leaderboard (track your score)
-- Mobile version
-
-🔮 **Exploring:**
-- Integration with WHOIS data for real-time domain analysis
-- Machine learning for domain reputation scoring
-- API for educational institutions
-
----
-
-## Use Cases
-
-- **Personal Learning** - Practice identifying phishing on your own time
-- **Security Training** - Teachers use this in corporate/school training
-- **Team Awareness** - Security teams run group sessions
-- **Interview Prep** - Brush up on security fundamentals
-
----
-
-## Technical Details
-
-- **Language:** Python 3.7+
-- **UI Framework:** Tkinter (built-in Python)
-- **Dependencies:** None! Just Python.
-- **Code Size:** ~500 lines
-- **License:** MIT (use freely)
-
----
-
-## Contributing & Feedback
-
-Found a phishing pattern we're missing? Have a better explanation for why something works? Want to add a feature?
-
-Open an issue or submit a pull request. This tool is better when it represents real attacks people actually see.
-
----
-
-## Why I Built This
-
-I was learning about cybersecurity and realized that *recognizing* phishing is a skill like any other—it requires practice. Most training is either boring slide decks or way too technical.
-
-I thought: What if learning was... actually engaging?
-
-That's Phishing Detective. It's security education that doesn't feel like punishment.
-
----
-
-## Questions?
-
-- 📧 Email: qitpo01official@gmail.com
-- 🔗 LinkedIn: [Farhan Ali Khan](https://linkedin.com/in/farhan-ali-khan-14b4872b5)
-- 💬 Open an issue on GitHub
-
----
-
-Made with ❤️ for people who want to be smarter about security.
+MIT — see [LICENSE](LICENSE).

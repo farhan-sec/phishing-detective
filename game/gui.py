@@ -20,6 +20,7 @@ from tkinter import messagebox
 
 from game import constants as c
 from game.link_generator import generate_challenge
+from game.reference_data import PHISHING_TRICKS, DIFFICULTY_LEVELS
 
 HIGH_SCORE_FILE = os.path.join(os.path.expanduser("~"), ".phishing_detective_scores.json")
 
@@ -52,6 +53,22 @@ def _save_high_score(value):
         pass  # not a big deal if this fails, just skip saving
 
 
+def _trim_explanation(text, feedback_level):
+    """
+    New: difficulty-aware explanation length.
+
+    "detailed"/"moderate" show the explanation as written. "minimal"
+    (advanced difficulty) keeps just the first sentence, so advanced
+    players get a quick confirmation instead of a full breakdown.
+    """
+    if feedback_level != "minimal":
+        return text
+    first_sentence = text.split(". ")[0].strip()
+    if not first_sentence.endswith("."):
+        first_sentence += "."
+    return first_sentence
+
+
 class PhishingDetectiveApp:
     def __init__(self, root):
         self.root = root
@@ -68,6 +85,13 @@ class PhishingDetectiveApp:
         self.current_challenge = None
         self.answered = False
 
+        # New: difficulty selection, backed by the previously-unused
+        # DIFFICULTY_LEVELS data (see reference_data.py).
+        self.difficulty = self._ask_difficulty()
+        self.feedback_level = DIFFICULTY_LEVELS[self.difficulty]["feedback"]
+        self.rounds_played = 0
+        self.rounds_correct = 0
+
         self._build_header()
         self._build_link_card()
         self._build_buttons()
@@ -78,6 +102,53 @@ class PhishingDetectiveApp:
         self.root.bind("<Return>", lambda e: self._on_next_or_enter())
 
         self.next_round()
+
+    # ------------------------------------------------------------------
+    # Startup dialogs
+    # ------------------------------------------------------------------
+    def _ask_difficulty(self):
+        """New: a small modal dialog shown before the game starts."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Choose Difficulty")
+        dialog.geometry("380x260")
+        dialog.configure(bg=c.BG_MAIN)
+        dialog.transient(self.root)
+        dialog.resizable(False, False)
+        dialog.grab_set()
+
+        tk.Label(
+            dialog, text="Choose your difficulty", font=c.FONT_FEEDBACK_TITLE,
+            bg=c.BG_MAIN, fg=c.TEXT_DARK,
+        ).pack(pady=(22, 6))
+
+        tk.Label(
+            dialog,
+            text="This changes how much explanation you get\nafter each guess, and your target accuracy.",
+            font=c.FONT_SMALL, bg=c.BG_MAIN, fg=c.TEXT_MUTED, justify="center",
+        ).pack(pady=(0, 16))
+
+        chosen = {"value": "beginner"}
+
+        def pick(level):
+            chosen["value"] = level
+            dialog.destroy()
+
+        labels = {
+            "beginner": "Beginner — full explanations",
+            "intermediate": "Intermediate — standard explanations",
+            "advanced": "Advanced — short hints only",
+        }
+        for level in ("beginner", "intermediate", "advanced"):
+            tk.Button(
+                dialog, text=labels[level], font=c.FONT_BUTTON,
+                bg=c.ACCENT_BLUE, fg="white", activebackground=c.ACCENT_BLUE_HOVER,
+                activeforeground="white", relief="flat", padx=16, pady=8,
+                cursor="hand2", command=lambda l=level: pick(l),
+            ).pack(pady=5, padx=24, fill="x")
+
+        dialog.protocol("WM_DELETE_WINDOW", lambda: pick("beginner"))
+        self.root.wait_window(dialog)
+        return chosen["value"]
 
     # ------------------------------------------------------------------
     # Layout builders
@@ -94,7 +165,7 @@ class PhishingDetectiveApp:
         title.pack(pady=(14, 0))
 
         subtitle = tk.Label(
-            header, text="Real link, or a trap? Decide before you click.",
+            header, text=f"Real link, or a trap? Decide before you click.  ({self.difficulty.capitalize()} mode)",
             font=c.FONT_SUBTITLE, bg=c.BG_HEADER, fg="#c3c9dd",
         )
         subtitle.pack()
@@ -132,6 +203,13 @@ class PhishingDetectiveApp:
         )
         help_btn.grid(row=0, column=4, padx=12)
         help_btn.bind("<Button-1>", lambda e: self._show_help())
+
+        reference_btn = tk.Label(
+            stats_row, text="  Phishing tricks reference", font=(c.FONT_FAMILY, 9, "underline"),
+            bg=c.BG_HEADER, fg="#8fa3ff", cursor="hand2",
+        )
+        reference_btn.grid(row=0, column=5, padx=12)
+        reference_btn.bind("<Button-1>", lambda e: self._show_reference())
 
         self._refresh_stats()
 
@@ -243,8 +321,12 @@ class PhishingDetectiveApp:
 
     def _show_feedback(self, correct):
         challenge = self.current_challenge
+        self.rounds_played += 1
+
+        explanation = _trim_explanation(challenge["explanation"], self.feedback_level)
 
         if correct:
+            self.rounds_correct += 1
             self.score += 10 + min(self.streak, 10)  # small streak bonus, capped
             self.streak += 1
             self.best_streak = max(self.best_streak, self.streak)
@@ -255,12 +337,12 @@ class PhishingDetectiveApp:
             if challenge["is_phishing"]:
                 body_text = (
                     "You correctly spotted a phishing link. Here's the giveaway, "
-                    f"so you recognize it faster next time:\n\n{challenge['explanation']}"
+                    f"so you recognize it faster next time:\n\n{explanation}"
                 )
             else:
                 body_text = (
                     "You correctly identified a safe, legitimate link. "
-                    f"{challenge['explanation']}"
+                    f"{explanation}"
                 )
         else:
             self.streak = 0
@@ -272,15 +354,18 @@ class PhishingDetectiveApp:
             if challenge["is_phishing"]:
                 body_text = (
                     f"{headline}\n\nThis link was actually PHISHING. "
-                    f"{challenge['explanation']}"
+                    f"{explanation}"
                 )
             else:
                 body_text = (
                     f"{headline}\n\nThis link was actually SAFE and legitimate. "
-                    f"{challenge['explanation']} Not every unusual-looking link is "
-                    "dangerous — it's worth checking the domain carefully instead of "
-                    "guessing on instinct alone."
+                    f"{explanation}"
                 )
+                if self.feedback_level != "minimal":
+                    body_text += (
+                        " Not every unusual-looking link is dangerous — it's worth "
+                        "checking the domain carefully instead of guessing on instinct alone."
+                    )
 
         self.feedback_card.config(bg=bg)
         self.result_title.config(text=title_text, bg=bg)
@@ -300,6 +385,20 @@ class PhishingDetectiveApp:
         self.lives_label.config(text="Lives: " + ("❤️ " * self.lives).strip())
         self.high_score_label.config(text=f"Best: {self.high_score}")
 
+    def _accuracy(self):
+        if self.rounds_played == 0:
+            return 0
+        return round(100 * self.rounds_correct / self.rounds_played)
+
+    def _detective_rank(self):
+        """New: compares this run's accuracy against the chosen difficulty's
+        accuracy_threshold (from DIFFICULTY_LEVELS, previously unused)."""
+        accuracy = self._accuracy()
+        threshold = DIFFICULTY_LEVELS[self.difficulty]["accuracy_threshold"]
+        if accuracy >= threshold:
+            return f"{accuracy}% accuracy — that clears the {self.difficulty} target of {threshold}%. Nice work!"
+        return f"{accuracy}% accuracy — the {self.difficulty} target is {threshold}%. Worth another run!"
+
     def _game_over(self):
         if self.score > self.high_score:
             self.high_score = self.score
@@ -312,6 +411,7 @@ class PhishingDetectiveApp:
                 f"Final score: {self.score}\n"
                 f"Best streak this run: {self.best_streak}\n"
                 f"All-time best score: {self.high_score}\n\n"
+                f"{self._detective_rank()}\n\n"
                 "Want to play again?"
             ),
         )
@@ -325,6 +425,8 @@ class PhishingDetectiveApp:
         self.streak = 0
         self.best_streak = 0
         self.lives = c.STARTING_LIVES
+        self.rounds_played = 0
+        self.rounds_correct = 0
         self._refresh_stats()
         self.next_round()
 
@@ -351,6 +453,58 @@ class PhishingDetectiveApp:
                 "guesses build your streak and score. Good luck!"
             ),
         )
+
+    def _show_reference(self):
+        """
+        New: a reference panel built from PHISHING_TRICKS (previously
+        unused data, moved in from the old root-level phishing_patterns.py).
+        Shows real-world phishing patterns beyond what any single round
+        generates, e.g. QR-code phishing and spoofed-sender tricks.
+        """
+        win = tk.Toplevel(self.root)
+        win.title("Phishing Tricks Reference")
+        win.geometry("560x520")
+        win.configure(bg=c.BG_MAIN)
+
+        tk.Label(
+            win, text="Common phishing tricks", font=c.FONT_FEEDBACK_TITLE,
+            bg=c.BG_MAIN, fg=c.TEXT_DARK,
+        ).pack(pady=(16, 4))
+
+        canvas = tk.Canvas(win, bg=c.BG_MAIN, highlightthickness=0)
+        scrollbar = tk.Scrollbar(win, orient="vertical", command=canvas.yview)
+        body = tk.Frame(canvas, bg=c.BG_MAIN)
+
+        body.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=body, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True, padx=(24, 0), pady=10)
+        scrollbar.pack(side="right", fill="y", pady=10, padx=(0, 12))
+
+        for category, items in PHISHING_TRICKS.items():
+            tk.Label(
+                body, text=category, font=c.FONT_STATS, bg=c.BG_MAIN, fg=c.ACCENT_BLUE,
+            ).pack(anchor="w", pady=(12, 2))
+
+            for item in items:
+                if "fake" in item and "real" in item:
+                    line = f"'{item['fake']}'  →  should be '{item['real']}'  ({item['description']})" \
+                        if "description" in item else f"'{item['fake']}'  →  should be '{item['real']}'"
+                elif "url" in item:
+                    line = f"'{item['url']}'  —  {item['description']}"
+                else:
+                    line = item.get("description", "")
+
+                tk.Label(
+                    body, text=f"•  {line}", font=c.FONT_SMALL, bg=c.BG_MAIN,
+                    fg=c.TEXT_DARK, wraplength=480, justify="left",
+                ).pack(anchor="w", padx=(8, 0), pady=1)
+
+        tk.Button(
+            win, text="Close", font=c.FONT_BUTTON, bg=c.ACCENT_BLUE, fg="white",
+            relief="flat", padx=16, pady=6, cursor="hand2", command=win.destroy,
+        ).pack(pady=12)
 
 
 def run():
